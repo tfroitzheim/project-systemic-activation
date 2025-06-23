@@ -48,28 +48,27 @@ All raw and processed data — including FASTQ files, references, and Seurat obj
 
 ## Contact & Authorship
 
-Maintained by the Whited Lab,  
-Department of Stem Cell and Regenerative Biology, Harvard University.
+This repository is maintained by members of the **Whited Lab** at the **Harvard University Department of Stem Cell and Regenerative Biology**.
 
-### Creator  
-Tim Froitzheim  
-Lead Bioinformatician  
-Email: tfroitzheim@fas.harvard.edu
+**Creator**  
+- **Name:** Tim Froitzheim  
+- **Email:** [tfroitzheim@fas.harvard.edu](mailto:tfroitzheim@fas.harvard.edu)  
+- **Role:** Lead Bioinformatician
 
-### Author Contact  
-Dr. Duygu Payzin-Dogru  
-Project Lead Scientist  
-Email: duygupayzin@g.harvard.edu
+**Author Contact**  
+- **Name:** Dr. Duygu Payzin-Dogru
+- **Email:** [duygupayzin@g.harvard.edu](mailto:duygupayzin@g.harvard.edu)  
+- **Role:** Project Lead Scientist
 
-### Principal Investigator  
-Dr. Jessica L. Whited  
-Website: [www.whitedlab.com](http://www.whitedlab.com)  
-Email: whitedlab@gmail.com
+**Principal Investigator**  
+- **Name:** Dr. Jessica L. Whited  
+- **Lab Website:** [www.whitedlab.com](http://www.whitedlab.com)  
+- **Lab Email:** [whitedlab@gmail.com](mailto:whitedlab@gmail.com)
 
-### Repository Manager  
-Hani Singer  
-Research Laboratory Manager  
-Email: hani_singer@fas.harvard.edu
+**Repository Contact**  
+- **Name:** Hani Singer
+- **Email:** [hani_singer@fas.harvard.edu](mailto:hani_singer@fas.harvard.edu)  
+- **Role:** Research Laboratory Manager
 
 ---
 
