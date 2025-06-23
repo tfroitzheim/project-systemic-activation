@@ -55,15 +55,18 @@ This repository is maintained by members of the **Whited Lab** at the **Harvard 
 - **Email:** [tfroitzheim@fas.harvard.edu](mailto:tfroitzheim@fas.harvard.edu)  
 - **Role:** Lead Bioinformatician
 
+
 **Author Contact**  
 - **Name:** Dr. Duygu Payzin-Dogru
 - **Email:** [duygupayzin@g.harvard.edu](mailto:duygupayzin@g.harvard.edu)  
 - **Role:** Project Lead Scientist
 
+
 **Principal Investigator**  
 - **Name:** Dr. Jessica L. Whited  
 - **Lab Website:** [www.whitedlab.com](http://www.whitedlab.com)  
 - **Lab Email:** [whitedlab@gmail.com](mailto:whitedlab@gmail.com)
+
 
 **Repository Contact**  
 - **Name:** Hani Singer
