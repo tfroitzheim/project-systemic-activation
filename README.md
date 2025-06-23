@@ -6,7 +6,7 @@ This repository contains all scripts and resources used to generate the data and
 
 ---
 
-## Quick Start Instructions - (uses preprocessed Seurat object)
+## Quick Start Instructions
 
 To generate the figures without reprocessing raw data:
 
