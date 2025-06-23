@@ -1,0 +1,556 @@
+
+```{r}
+library(Seurat)
+library(dplyr)
+library(ggplot2)
+library(scCustomize)
+
+# Your Seurat object
+seurat_filtered <- readRDS("../output/seurat/seurat_filtered_publication.rds")
+# Set output directory
+out.dir <- "../output/plots"
+```
+
+
+Figure 6, Panel C
+```{r}
+## 1  Define the cluster-to-cell-type dictionary
+cluster_to_annotation <- c(
+  "0"  = "Erythrocytes",
+  "1"  = "Epithelial cells",
+  "2"  = "Lymphocytes",
+  "3"  = "Fibroblast I",
+  "4"  = "T Lymphocytes",
+  "5"  = "Basal epithelial cells",
+  "6"  = "Early erythroblasts",
+  "7"  = "Late erythroblasts",
+  "8"  = "Fibroblast II",
+  "9"  = "Putative Mesenchymal Progenitor",
+  "10" = "Macrophages",
+  "11" = "Fibroblast III",
+  "12" = "Endothelial cells",
+  "13" = "Fast-twitch skeletal muscle",
+  "14" = "Mature Mast Cells",
+  "15" = "Immature Mast Cells",
+  "16" = "Slow-twitch skeletal muscle",
+  "17" = "Plasma cells"
+)
+
+## 2  Sanity-check that clustering has been run
+if (!"seurat_clusters" %in% colnames(seurat_filtered@meta.data)) {
+  stop("The object has no 'seurat_clusters' metadata. Run FindClusters() first.")
+}
+
+## 3  Look up the annotation for every cell
+cluster_ids <- as.character(seurat_filtered$seurat_clusters)          # vector of cluster numbers
+cell_types  <- unname(cluster_to_annotation[cluster_ids])             # map to names
+cell_types[is.na(cell_types)] <- "Unknown"                            # fallback for unmapped clusters
+
+## 4  Add (or replace) the metadata column
+seurat_filtered$cell_type <- factor(cell_types,
+                                    levels = c(unique(cluster_to_annotation),
+                                               "Unknown"))
+
+## 5  (optional) make it the active identity & check
+Idents(seurat_filtered) <- "cell_type"
+head(seurat_filtered@meta.data[c("seurat_clusters", "cell_type")])
+table(seurat_filtered$cell_type)
+
+
+DimPlot(seurat_filtered,
+        reduction = "umap",
+        group.by  = "cell_type",
+        label     = TRUE,
+        repel     = TRUE) +
+  ggtitle("UMAP: Cell-type annotations")
+
+
+# Save as PDF at high resolution (vector)
+#ggsave(filename = file.path(out.dir, "UMAP_seurat_annotations.pdf"), plot     = p1, device   = cairo_pdf,  width    = 12, height   = 8)
+```
+
+
+Figure 6, Panel C
+```{r}
+#UMAP colored by group
+p2 <- DimPlot(
+  object    = seurat_filtered,
+  reduction = "umap",
+  group.by  = "group",
+  label     = FALSE,
+  repel     = TRUE
+) + ggtitle("UMAP: Group")
+
+print(p2)
+
+#ggsave(filename = file.path(out.dir, "UMAP_seurat_annotations.pdf"), plot = last_plot(), device = cairo_pdf, width = 12, height = 8)
+```
+
+
+Figure 6, Panel E
+```{r}
+seurat_filtered$UMAPGroup <- case_when(
+  seurat_filtered$group == "2C"                                    ~ "2C",
+  seurat_filtered$group == "4C" & seurat_filtered$condition == "Contra" ~ "4C_Contra",
+  seurat_filtered$group == "4C" & seurat_filtered$condition == "Intact" ~ "4C_Intact",
+  TRUE                                                             ~ NA_character_
+)
+seurat_filtered$UMAPGroup <- factor(
+  seurat_filtered$UMAPGroup,
+  levels = c("2C", "4C_Contra", "4C_Intact")
+)
+
+
+pal <- scCustomize::ColorBlind_Pal()           # returns navy, orange, …
+
+my_cols <- c(
+  "2C"         = "white",      # keeps 2C cells light
+  "4C_Contra"  = pal[1],       # navy
+  "4C_Intact"  = pal[2]        # orange
+)
+
+p_orange <- DimPlot(
+  object    = seurat_filtered,
+  reduction = "umap",
+  group.by  = "UMAPGroup",
+  pt.size   = 0.5,
+  order     = TRUE
+) +
+  ggtitle("UMAP: 2C vs 4C (orange highlights Intact)") +
+  scale_color_manual(
+    name   = NULL,
+    breaks = names(my_cols),
+    labels = c("", "4C Contralateral", "4C Intact"),
+    values = my_cols
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid      = element_blank(),
+    axis.line       = element_line(color = "black"),
+    axis.ticks      = element_line(color = "black"),
+    legend.background = element_blank()
+  )
+
+print(p_orange)
+
+
+#ggsave(filename = file.path(out.dir, "UMAP_4C_Intact_orange.pdf"), plot = p_orange, device = cairo_pdf, width = 8, height = 6)
+
+```
+
+Figure 6, Panel F
+
+```{r}
+DefaultAssay(seurat_filtered) <- "SCT"
+
+# ---------------------------------------------------
+# 1.  Gene list & helper objects
+# ---------------------------------------------------
+genes_to_test <- c(  # ← original vector
+  "KAZALD1","PRRX1","PRRX2","LOC138491290","LOC138516914",
+  "LOC138582738","LAMA1","TBX5","SHD","RAI14","FUS","FBLN1",
+  "SAFB","TWIST1","TRIL","SRSF1","MFAP2","TOP2B","VWDE",
+  "FGF8","SSBP3","CDCA4","ZIC2","INSR","LIMA1","MMP11",
+  "ZIC5","RCC2","AKT1","RSPO2","HAND2","SART3","ARAP1",
+  "GDF11","CPVL","SOX4","C1QBP","TPBG"
+)
+
+rename_map <- c(                       # LOC → gene symbol
+  LOC138516914 = "KAZALD2",
+  LOC138491290 = "KAZALD3"
+)
+
+title_case <- function(x) {            # helper for nicer labels
+  paste0(toupper(substring(x, 1, 1)), tolower(substring(x, 2)))
+}
+
+# ---------------------------------------------------
+# 2.  Build 4-level metadata for Intact/Contra × ADRA2A status
+# ---------------------------------------------------
+adra_counts <- GetAssayData(seurat_filtered, slot = "counts")["ADRA2A", ]
+
+seurat_filtered$group <- factor(
+  paste0(
+    seurat_filtered$condition, "_",
+    ifelse(adra_counts > 0, "Adra2a+", "Adra2a-")
+  ),
+  levels = c("Intact_Adra2a+", "Intact_Adra2a-",
+             "Contra_Adra2a+", "Contra_Adra2a-")
+)
+
+Idents(seurat_filtered) <- "group"
+
+# ---------------------------------------------------
+# 3.  DEG across the four groups (only the genes of interest)
+# ---------------------------------------------------
+deg_all <- FindAllMarkers(
+  object          = seurat_filtered,
+  features        = genes_to_test,
+  test.use        = "wilcox",
+  min.pct         = 0,
+  logfc.threshold = 0
+)
+
+# ---------------------------------------------------
+# 4.  Subset DEGs for Intact_Adra2a+ and Contra_Adra2a+
+# ---------------------------------------------------
+sig_cutoff <- 0.05
+
+deg_pos <- subset(
+  deg_all,
+  cluster %in% c("Intact_Adra2a+", "Contra_Adra2a+") &
+    p_val_adj < sig_cutoff &
+    avg_log2FC > 0
+)
+
+intact_up  <- deg_pos[deg_pos$cluster == "Intact_Adra2a+",  c("gene", "avg_log2FC")]
+contra_up  <- deg_pos[deg_pos$cluster == "Contra_Adra2a+",  c("gene", "avg_log2FC")]
+names(intact_up)[2] <- "logFC_intact"
+names(contra_up)[2] <- "logFC_contra"
+
+# shared genes (priority 1)  ────────────────────────────────────────────────
+shared <- merge(intact_up, contra_up, by = "gene")
+shared$priority     <- 1
+shared$rank_metric  <- pmax(shared$logFC_intact, shared$logFC_contra)
+
+# Contra-only genes (priority 2)  ───────────────────────────────────────────
+contra_only <- contra_up[ !contra_up$gene %in% intact_up$gene, ]
+contra_only$priority    <- 2
+contra_only$rank_metric <- contra_only$logFC_contra
+
+# combine & rank  ───────────────────────────────────────────────────────────
+combined <- rbind(
+  shared[ , c("gene", "priority", "rank_metric")],
+  contra_only[ , c("gene", "priority", "rank_metric")]
+)
+combined <- combined[order(combined$priority, -combined$rank_metric), ]
+
+plot_genes <- combined$gene
+plot_labels <- title_case(
+  ifelse(plot_genes %in% names(rename_map),
+         rename_map[plot_genes],
+         plot_genes)
+)
+
+# ---------------------------------------------------
+# 5.  Dot-plot
+# ---------------------------------------------------
+p_contra <- DotPlot(
+  seurat_filtered,
+  features = plot_genes,
+  cols     = c("mistyrose", "red4"),
+  scale    = FALSE
+) +
+  scale_x_discrete(
+    limits = rev(plot_genes),   # preserve ranking
+    labels = rev(plot_labels)
+  ) +
+  coord_flip() +
+  ggtitle("ADRA2A⁺ Markers: Shared (1) then Contra-only (2)") +
+  theme_minimal() +
+  theme(panel.grid = element_blank(),
+        axis.title = element_blank())
+
+print(p_contra)
+
+
+#pdf_file <- file.path(out.dir, "Co-expression_blastema_markergenes.pdf")
+#ggsave(filename = file.path(out.dir, "Co-expression_blastema_markergenes.pdf"), plot = p_contra, device = "pdf", width = 10, height = 8)
+```
+
+Figure 6, Panel K
+```{r}
+seurat_filtered$cell_type_condition <- with(
+  seurat_filtered@meta.data,
+  paste(cell_type, condition, sep = "_")
+)
+Idents(seurat_filtered) <- "cell_type_condition"
+
+# --------------------------------------------------------------
+# 1) Explicitly pick the six fibroblast groups
+fibro_targets <- c(
+  "Fibroblast I_Intact", "Fibroblast I_Contra",
+  "Fibroblast II_Intact", "Fibroblast II_Contra",
+  "Fibroblast III_Intact", "Fibroblast III_Contra"
+)
+
+# Subset the object to just those cells
+seurat_fib <- subset(
+  seurat_filtered,
+  subset = cell_type_condition %in% fibro_targets
+)
+
+# Make sure they stay in this order on the X-axis
+seurat_fib$cell_type_condition <- factor(
+  seurat_fib$cell_type_condition,
+  levels = fibro_targets
+)
+
+# --------------------------------------------------------------
+# 2) Genes (keep LOC ID in data, rename only on the plot)
+genes_to_plot <- c(
+ "EGR1", 
+ "ZEB2",
+ "ZEB1",  
+ "SNAI3",
+ "SNAI2",
+ "SNAI1",
+ "LOC138582160",
+  "TWIST1"
+)
+ rename_map <- c(LOC138582160 = "TWIST3")
+
+# --------------------------------------------------------------
+# 3) Build the DotPlot — genes on Y, fibro groups on X
+p_fib <- DotPlot(
+  object    = seurat_fib,
+  features  = genes_to_plot,
+  scale     = FALSE,
+  group.by  = "cell_type_condition",
+  cols      = c("mistyrose", "red4"))
+
+p_fib <- p_fib +
+  coord_flip() +                                   # (already added) flip axes
+  theme(axis.text.x = element_text(angle = 45,     # <-- set a tilt
+                                   hjust = 1,      # right-align so labels
+                                   vjust = 1))     # tuck nicely under ticks
+
+print(p_fib)
+```
+
+Sigure S3
+```{r}
+# Put related cell types next to each other
+ordered_levels <- c(
+  ## Epithelial lineage
+  "Basal epithelial cells",
+  "Epithelial cells",
+  
+  ## Vasculature
+  "Endothelial cells",
+  
+  ## Stromal / mesenchymal
+  "Fibroblast I",
+  "Fibroblast II",
+  "Fibroblast III",
+  "Putative Mesenchymal Progenitor",
+  
+  ## Muscle
+  "Fast-twitch skeletal muscle",
+  "Slow-twitch skeletal muscle",
+  
+  ## Erythroid lineage
+  "Early erythroblasts",
+  "Late erythroblasts",
+  "Erythrocytes",
+  
+  ## Mast cells
+  "Immature Mast Cells",
+  "Mature Mast Cells",
+  
+  ## Lymphoid & myeloid immunity
+  "Lymphocytes",
+  "T Lymphocytes",
+  "Plasma cells",
+  "Macrophages"
+)
+
+# Relevel the existing factor
+seurat_filtered@meta.data$cell_type <- factor(
+  seurat_filtered@meta.data$cell_type,
+  levels = ordered_levels
+)
+# ──────────────────────────────────────────────────────────
+# 1.  Your updated LOC-ID → label map
+# ──────────────────────────────────────────────────────────
+rename_map <- c(
+  "LOC138567632" = "HBB2-like (LOC138567632)",
+  "LOC138567634" = "HBA2-like (LOC138567634)",
+  "LOC138453278" = "FTL-like (LOC138453278)",
+  "LOC138582383" = "KRT5 (LOC138582383)",
+  "LOC138582384" = "KRT5 (LOC138582384)",
+  "LOC138582385" = "KRT5 (LOC138582385)",
+  "LOC138516689" = "S100-P-like (LOC138516689)",
+  "LOC138525800" = "BTLA-like (LOC138525800)",
+  "LOC138525384" = "SULT2B1-like (LOC138525384)",
+  "LOC138516914" = "KAZALD2 (LOC138516914)",
+  "LOC138491290" = "KAZALD3 (LOC138491290)",
+  "LOC138521582" = "KRT15 (LOC138521582)",
+  "LOC138510293" = "ANXA1 (LOC138510293)",
+  "LOC138569677" = "HBB1-like (LOC138569677)",
+  "LOC138510292" = "Annexin A1-like (LOC138510292)",
+  "LOC138513908" = "CTSS-like (LOC138513908)",
+  "LOC138513742" = "CTSS-like (LOC138513742)",
+  "LOC138513909" = "CTSS-like (LOC138513909)",
+  "LOC138491677" = "MC-CPA-like (LOC138491677)",
+  "LOC138491675" = "MC-CPA-like (LOC138491675)",
+  "LOC138569556" = "MCPT1-like (LOC138569556)",
+  "LOC138577383" = "MCPT1-like (LOC138577383)"
+)
+
+# ──────────────────────────────────────────────────────────
+# 2.  Cluster-wise gene lists • commented-out genes removed
+# ──────────────────────────────────────────────────────────
+cl0  <- c("LOC138567632","LOC138567634","TFR2","SPTB")
+cl1  <- c("LOC138582383","LOC138582384","LOC138582385","EPCAM","S100A13")
+cl2  <- c("ETS1","LOC138525800","LOC138525384","VSIG1","TCF7","CCR7","IL16","CD79A","CD79B")
+cl3  <- c("COL1A1","COL3A1","COL6A1","POSTN","FBN1")
+cl4  <- c("CCL5-like","CD3D-like","CST7","HCST","CD3E","GZMA","CD8A","THEMIS")
+cl5  <- c("LOC138582383","LOC138582384","LOC138582385","LOC138521582","EPCAM","PPL","CLDN7","DSP","LOC138510293","S100A13")
+cl6  <- c("LOC138567632","LOC138567634")                       # COX / CYTB / ATP6 / ALAS2 removed
+cl7  <- c("LOC138567632","TFR2",
+          "HEMGN","PRDX2","EPB41","SLC4A1","SPTB")                            # ALAS2 removed
+cl8  <- c("COL1A1","COL3A1","COL6A1","COL5A1","SPARC","FSTL1")
+cl9  <- c()                                                     # only Annexin A1-like kept
+cl10 <- c("AIF1","CSF1R","MARCO","C1QC","C1QB","GRN")
+cl11 <- c("COL1A1","COL3A1","COL5A2","COL6A1","POSTN","SPARC","FSTL1","DCN")
+cl12 <- c("PECAM1","CDH5","FLT4","JCAD","LYVE1","MMRN1","MMRN2",
+          "CAV","CAVIN1","CAVIN2","EHD2")
+cl13 <- c("TNNC2","TNNI2","TNNT3","MYLPF","MYL1","MYL3","MYH1","MYH2","MYH4",
+          "CKM","ATP2A1","LMOD2","ACTN3","MYBPC2")
+cl14 <- c("LOC138513908","LOC138513742","LOC138513909",
+          "LOC138491677","LOC138491675","KIT","SRGN","RGS13","HDC","CD34","SRGN")
+cl15 <- c("LOC138569556","LOC138577383","FCER1G","ALOX5AP","ALOX5",
+          "GATA3","RGS13","RGS1","BLK","CST7","SRGN")
+cl16 <- c("TNNC1","TNNI1","TNNT1","MYL2","MYL3","MYL10","MYL1","MYL4",
+          "CKM","TPM23","LMOD3","MYH7B")
+cl17 <- c("JCHAIN","IGLL1","CD79A","CD79B","PRDM1","RF4","XBP1","POU2AF1","POU2F2")
+
+
+# ──────────────────────────────────────────────────────────
+# 2b.  Concatenate gene lists in the *new* ladder order
+#      (duplicates removed on first appearance)
+# ──────────────────────────────────────────────────────────
+features_in_order <- unique(c(
+  cl5,   # Basal epithelial cells
+  cl1,   # Epithelial cells
+  cl12,  # Endothelial cells
+  cl3,   # Fibroblast I
+  cl8,   # Fibroblast II
+  cl11,  # Fibroblast III
+  cl9,   # Putative Mesenchymal Progenitor
+  cl13,  # Fast-twitch skeletal muscle
+  cl16,  # Slow-twitch skeletal muscle
+  cl6,   # Early erythroblasts
+  cl7,   # Late  erythroblasts
+  cl0,   # Erythrocytes
+  cl15,  # Immature Mast Cells
+  cl14,  # Mature   Mast Cells
+  cl2,   # Lymphocytes
+  cl4,   # T Lymphocytes
+  cl17,  # Plasma cells
+  cl10   # Macrophages
+))
+
+# ──────────────────────────────────────────────────────────
+# 3.  DotPlot  (genes → Y, cell_type → X)
+# ──────────────────────────────────────────────────────────
+p <- DotPlot(
+  seurat_filtered,
+  features = features_in_order,
+  group.by = "cell_type",
+  scale = FALSE,
+  dot.scale = 6
+) +
+  ## relabel genes (genes are on X before flip)
+  scale_x_discrete(labels = function(ids)
+                     ifelse(ids %in% names(rename_map),
+                            rename_map[ids], ids)) +
+  ## flip so cell types are along X and genes stack on Y
+  coord_flip() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1, size = 6),
+    axis.text.y = element_text(size = 6)
+  ) +
+  labs(x = "Gene", y = "Cell type")
+
+p <- p +
+  scale_colour_gradient(          # replaces DotPlot’s default palette
+    low  = "mistyrose",           # lowest expression
+    high = "red4"                 # highest expression
+  )
+p
+```
+
+Figure S4A
+
+```{r}
+# ── 1)  Idents = cell_type (skip if already set) ────────────────────────────────
+Idents(seurat_filtered) <- seurat_filtered$cell_type   
+
+# ── 2)  Pull & alphabetise ADRA / ADRB genes ───────────────────────────────────
+adr_genes <- grep("^ADR[A]",                      # ^ADRA… or ^ADRB…
+                  rownames(seurat_filtered),
+                  value       = TRUE,
+                  ignore.case = TRUE)
+
+adr_genes <- adr_genes[order(toupper(adr_genes))]  # A-to-Z, case-insensitive
+#  # or simply: adr_genes <- sort(adr_genes)
+
+message("Genes found (alphabetical): ", paste(adr_genes, collapse = ", "))
+
+if (length(adr_genes) == 0) stop("No ADRA genes detected in this object.")
+
+# ── 3)  DotPlot with misty rose → red4 scale ───────────────────────────────────
+p <- DotPlot(
+        object   = seurat_filtered,
+        features = adr_genes,       # now alphabetical on the x-axis
+        assay    = "SCT",
+        group.by = "cell_type",
+        scale    = FALSE
+     ) +
+     scale_color_gradientn(
+       colours = c("mistyrose", "red4"),
+       name    = "Avg. expression"
+     ) +
+     scale_size(range = c(0, 8), name = "Pct. expressing") +
+     RotatedAxis() +
+     ggtitle("ADRA gene expression across cell types") +
+     theme(plot.title = element_text(hjust = 0.5))
+
+print(p)
+#ggsave(filename = file.path(out.dir, "dotplot_ADRA_2C4Cdata_celltypes.pdf"), plot = p, width = 12, height = 12)
+
+```
+
+Figure S4B
+
+```{r}
+# ── 1)  Idents = cell_type (skip if already set) ────────────────────────────────
+Idents(seurat_filtered) <- seurat_filtered$cell_type   
+
+# ── 2)  Pull & alphabetise ADRA / ADRB genes ───────────────────────────────────
+adr_genes <- grep("^ADR[B]",                      # ^ADRA… or ^ADRB…
+                  rownames(seurat_filtered),
+                  value       = TRUE,
+                  ignore.case = TRUE)
+
+adr_genes <- adr_genes[order(toupper(adr_genes))]  # A-to-Z, case-insensitive
+#  # or simply: adr_genes <- sort(adr_genes)
+
+message("Genes found (alphabetical): ", paste(adr_genes, collapse = ", "))
+
+if (length(adr_genes) == 0) stop("No ADRB genes detected in this object.")
+
+# ── 3)  DotPlot with misty rose → red4 scale ───────────────────────────────────
+p <- DotPlot(
+        object   = seurat_filtered,
+        features = adr_genes,       # now alphabetical on the x-axis
+        assay    = "SCT",
+        group.by = "cell_type",
+        scale    = FALSE
+     ) +
+     scale_color_gradientn(
+       colours = c("mistyrose", "red4"),
+       name    = "Avg. expression"
+     ) +
+     scale_size(range = c(0, 8), name = "Pct. expressing") +
+     RotatedAxis() +
+     ggtitle("ADRB gene expression across cell types") +
+     theme(plot.title = element_text(hjust = 0.5))
+
+print(p)
+#ggsave(filename = file.path(out.dir, "dotplot_ADRB_2C4Cdata_celltypes.pdf"), plot     = p,width    = 12, height   = 12)
+
+```
+

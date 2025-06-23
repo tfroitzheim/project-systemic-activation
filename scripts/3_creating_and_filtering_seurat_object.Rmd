@@ -1,0 +1,308 @@
+
+```{r}
+# 0. Libraries
+library(Seurat)
+library(dplyr)
+library(Matrix)
+library(tibble)
+library(SoupX)
+library(ggplot2)
+library(scDblFinder)
+library(SingleCellExperiment)
+library(harmony)
+library(DropletUtils)
+```
+
+
+
+Creating the 2C Seurat object, including every droplet (needed for SoupX).
+```{r}
+base_dir <- "../output/kb_count/2C"
+sample_dirs <- list.dirs(base_dir, full.names = TRUE, recursive = FALSE)
+seurat_list <- list()
+
+for (sample_path in sample_dirs) {
+  sample_name <- basename(sample_path)
+  counts_path <- file.path(sample_path, "counts_unfiltered")
+  
+  counts <- readMM(file.path(counts_path, "cells_x_genes.mtx"))
+  barcodes <- readLines(file.path(counts_path, "cells_x_genes.barcodes.txt"))
+  genes <- readLines(file.path(counts_path, "cells_x_genes.genes.txt"))
+  
+  # Transpose to make matrix [genes x cells]
+  counts <- t(counts)
+  
+  # Validate
+  if (nrow(counts) != length(genes)) {
+    stop(paste("Mismatch in number of genes for", sample_name))
+  }
+  if (ncol(counts) != length(barcodes)) {
+    stop(paste("Mismatch in number of barcodes for", sample_name))
+  }
+
+  rownames(counts) <- genes
+  colnames(counts) <- paste(sample_name, barcodes, sep = "_")
+  
+  # Create partial Seurat object
+  seurat_obj <- CreateSeuratObject(
+    counts     = counts,
+    project    = sample_name,
+    min.cells  = 0,
+    min.features = 0
+  )
+
+  # Add metadata
+  seurat_obj$sample <- sample_name
+  seurat_obj$group  <- "2C"
+  seurat_obj$condition <- ifelse(grepl("Intact", sample_name), "Intact", "Contra")
+
+  seurat_list[[sample_name]] <- seurat_obj
+}
+
+# Merge all into one Seurat object
+seurat_2C <- merge(
+  x = seurat_list[[1]],
+  y = seurat_list[-1],
+  add.cell.ids = names(seurat_list),
+  project = "2C_merged"
+)
+
+seurat_2C <- JoinLayers(seurat_2C)
+```
+
+
+Creating the 4C Seurat object, including every droplet (needed for SoupX).
+```{r}
+# Base directory for your 4C data
+base_dir_4C <- "../output/kb_count/4C"
+sample_dirs_4C <- list.dirs(base_dir_4C, full.names = TRUE, recursive = FALSE)
+
+seurat_list_4C_raw <- list()
+
+for (sample_path in sample_dirs_4C) {
+  sample_name <- basename(sample_path)
+  counts_path <- file.path(sample_path, "counts_unfiltered")
+  
+  cat("Loading:", sample_name, "\n")
+  
+  # 1. Read in the counts
+  counts <- readMM(file.path(counts_path, "cells_x_genes.mtx"))
+  barcodes <- readLines(file.path(counts_path, "cells_x_genes.barcodes.txt"))
+  genes <- readLines(file.path(counts_path, "cells_x_genes.genes.txt"))
+  
+  # 2. Transpose to make [genes x cells]
+  counts <- t(counts)
+  
+  # 3. Validate dimensions
+  if (nrow(counts) != length(genes)) {
+    stop(paste("Mismatch in number of genes for", sample_name))
+  }
+  if (ncol(counts) != length(barcodes)) {
+    stop(paste("Mismatch in number of barcodes for", sample_name))
+  }
+  
+  # 4. Assign row/column names
+  rownames(counts) <- genes
+  colnames(counts) <- paste0(sample_name, "_", barcodes)
+  
+  # 5. Create a Seurat object with **no** min.threshold
+  seurat_obj <- CreateSeuratObject(
+    counts       = counts,
+    project      = sample_name,
+    min.cells    = 0,
+    min.features = 0
+  )
+  
+  # 6. Add metadata
+  seurat_obj$sample <- sample_name
+  seurat_obj$group  <- "4C"
+  seurat_obj$condition <- ifelse(grepl("Intact", sample_name), "Intact", "Contra")
+  
+  # Collect
+  seurat_list_4C_raw[[sample_name]] <- seurat_obj
+}
+
+# Merge the separate Seurat objects
+seurat_4C_raw <- merge(
+  x = seurat_list_4C_raw[[1]],
+  y = seurat_list_4C_raw[-1],
+  add.cell.ids = names(seurat_list_4C_raw),
+  project = "4C_merged"
+)
+
+seurat_4C_raw <- JoinLayers(seurat_4C_raw)
+```
+
+
+
+```{r}
+#Extract raw count matrices
+raw_counts_2C <- GetAssayData(seurat_2C, assay = "RNA", slot = "counts") %>% as("dgCMatrix")
+raw_counts_4C <- GetAssayData(seurat_4C_raw, assay = "RNA", slot = "counts") %>% as("dgCMatrix")
+```
+
+
+```{r}
+#Empty-droplet detection (DropletUtils::emptyDrops)
+edrops_2C <- emptyDrops(raw_counts_2C)
+edrops_4C <- emptyDrops(raw_counts_4C)
+```
+
+
+```{r}
+# For 2C
+# — identify barcodes with a significant cell-calling p-value
+pass2C <- which(!is.na(edrops_2C$FDR) & edrops_2C$FDR <= 0.001)
+cells2C <- rownames(edrops_2C)[pass2C]
+message("2C: keeping ", length(cells2C), " barcodes (FDR ≤ 0.001)")
+seurat_2C_filtered <- subset(seurat_2C, cells = cells2C)
+
+# For 4C
+pass4C <- which(!is.na(edrops_4C$FDR) & edrops_4C$FDR <= 0.001)
+cells4C <- rownames(edrops_4C)[pass4C]
+message("4C: keeping ", length(cells4C), " barcodes (FDR ≤ 0.001)")
+seurat_4C_filtered <- subset(seurat_4C_raw, cells = cells4C)
+```
+
+
+```{r}
+# Only include deeply sequenced droplets
+seurat_2C_filtered <- subset(seurat_2C_filtered, subset = nCount_RNA > 500)
+seurat_4C_filtered <- subset(seurat_4C_filtered, subset = nCount_RNA > 500)
+
+```
+
+
+```{r}
+#Quick clustering for SoupX (2C)
+seurat_2C_filtered <- NormalizeData(seurat_2C_filtered, verbose = FALSE)
+seurat_2C_filtered <- FindVariableFeatures(seurat_2C_filtered, verbose = FALSE)
+seurat_2C_filtered <- ScaleData(seurat_2C_filtered, verbose = FALSE)
+seurat_2C_filtered <- RunPCA(seurat_2C_filtered, npcs = 30, verbose = FALSE)
+seurat_2C_filtered <- FindNeighbors(seurat_2C_filtered, dims = 1:30, verbose = FALSE)
+seurat_2C_filtered <- FindClusters(seurat_2C_filtered, resolution = 0.5, verbose = FALSE)
+
+# Quick clustering for SoupX (4C)
+seurat_4C_filtered <- NormalizeData(seurat_4C_filtered, verbose = FALSE)
+seurat_4C_filtered <- FindVariableFeatures(seurat_4C_filtered, verbose = FALSE)
+seurat_4C_filtered <- ScaleData(seurat_4C_filtered, verbose = FALSE)
+seurat_4C_filtered <- RunPCA(seurat_4C_filtered, npcs = 30, verbose = FALSE)
+seurat_4C_filtered <- FindNeighbors(seurat_4C_filtered, dims = 1:30, verbose = FALSE)
+seurat_4C_filtered <- FindClusters(seurat_4C_filtered, resolution = 0.5, verbose = FALSE)
+
+```
+
+
+```{r}
+# SoupX decontamination for 2C
+raw_counts_2C <- GetAssayData(seurat_2C, assay = "RNA", slot = "counts")
+cells_2C      <- colnames(seurat_2C_filtered)
+toc_2C        <- raw_counts_2C[, cells_2C]
+
+sc2C <- SoupChannel(tod = raw_counts_2C, toc = toc_2C)
+sc2C <- setClusters(sc2C, seurat_2C_filtered$seurat_clusters)
+sc2C <- autoEstCont(sc2C)
+
+# get the decontaminated count matrix directly
+corrected2C <- adjustCounts(sc2C)
+
+# SoupX decontamination for 4C
+raw_counts_4C <- GetAssayData(seurat_4C_raw, assay = "RNA", slot = "counts")
+cells_4C      <- colnames(seurat_4C_filtered)
+toc_4C        <- raw_counts_4C[, cells_4C]
+
+sc4C <- SoupChannel(tod = raw_counts_4C, toc = toc_4C)
+sc4C <- setClusters(sc4C, seurat_4C_filtered$seurat_clusters)
+sc4C <- autoEstCont(sc4C)
+
+# get the decontaminated count matrix directly
+corrected4C <- adjustCounts(sc4C)
+
+# 8. Add cleaned assays into your filtered Seurat objects
+seurat_2C_filtered[["SoupAdjusted"]] <- CreateAssayObject(counts = corrected2C)
+seurat_4C_filtered[["SoupAdjusted"]] <- CreateAssayObject(counts = corrected4C)
+```
+
+
+```{r}
+# Doublet detection on SoupAdjusted assay (2C)
+DefaultAssay(seurat_2C_filtered) <- "SoupAdjusted"
+sce2C <- as.SingleCellExperiment(seurat_2C_filtered)
+sce2C <- scDblFinder(sce2C, samples = "sample")
+seurat_2C_dbl <- as.Seurat(sce2C, counts = "counts")
+seurat_2C_dbl$scDblFinder.class <- sce2C$scDblFinder.class
+seurat_2C_singlets <- subset(seurat_2C_dbl, subset = scDblFinder.class == "singlet")
+
+# Doublet detection on SoupAdjusted assay (4C)
+DefaultAssay(seurat_4C_filtered) <- "SoupAdjusted"
+sce4C <- as.SingleCellExperiment(seurat_4C_filtered)
+sce4C <- scDblFinder(sce4C, samples = "sample")
+seurat_4C_dbl <- as.Seurat(sce4C, counts = "counts")
+seurat_4C_dbl$scDblFinder.class <- sce4C$scDblFinder.class
+seurat_4C_singlets <- subset(seurat_4C_dbl, subset = scDblFinder.class == "singlet")
+```
+
+
+```{r}
+# 11. Data integration with Seurat 
+mito_genes <- c("ND1","ND2","ND3","ND4","ND4L","ND5","ND6",
+                "COX1","COX2","COX3","CYTB","ATP6","ATP8")
+
+DefaultAssay(seurat_2C_singlets) <- "SoupAdjusted"
+DefaultAssay(seurat_4C_singlets) <- "SoupAdjusted"
+
+seurat_2C_singlets[["percent.mito"]] <- PercentageFeatureSet(seurat_2C_singlets, features = mito_genes)
+seurat_4C_singlets[["percent.mito"]] <- PercentageFeatureSet(seurat_4C_singlets, features = mito_genes)
+
+seurat_2C_singlets <- subset(seurat_2C_singlets, subset = percent.mito < 5)
+seurat_4C_singlets <- subset(seurat_4C_singlets, subset = percent.mito < 5)
+
+seurat_2C_sct <- SCTransform(seurat_2C_singlets, assay = "SoupAdjusted", vars.to.regress = "percent.mito", verbose = FALSE)
+seurat_4C_sct <- SCTransform(seurat_4C_singlets, assay = "SoupAdjusted", vars.to.regress = "percent.mito", verbose = FALSE)
+
+
+seurat_2C_sct$group <- "2C"
+seurat_4C_sct$group <- "4C"
+
+seurat_combined <- merge(seurat_2C_sct, y = seurat_4C_sct,
+                         add.cell.ids = c("2C","4C"), project = "2C_4C_combined")
+
+hvg <- SelectIntegrationFeatures(object.list = list(seurat_2C_sct, seurat_4C_sct),
+                                 nfeatures = 3000)
+
+VariableFeatures(seurat_combined) <- hvg
+
+seurat_combined <- RunPCA(seurat_combined, assay = "SCT",
+                          features = hvg, npcs = 50, verbose = FALSE)
+seurat_combined <- RunHarmony(seurat_combined, group.by.vars = "group",
+                              dims.use = 1:50, assay.use = "SCT", verbose = TRUE)
+seurat_combined <- RunUMAP(seurat_combined, reduction = "harmony",
+                            dims = 1:15,     seed.use = 5555)
+seurat_combined <- FindNeighbors(seurat_combined, reduction = "harmony", dims = 1:15)
+seurat_combined <- FindClusters(seurat_combined, resolution = 0.15)
+
+
+seurat_combined <- PrepSCTFindMarkers(
+  object = seurat_combined,
+  assay = "SCT"
+)
+
+
+DimPlot(
+  object    = seurat_combined,
+  reduction = "umap",
+  group.by  = "group",
+  label     = TRUE
+) + ggtitle("UMAP by Group")
+
+
+DimPlot(
+  object    = seurat_combined,
+  reduction = "umap",
+  group.by  = "seurat_clusters",
+  label     = TRUE
+) + ggtitle("UMAP by Condition")
+
+#saveRDS(seurat_combined, file = "../output/seurat/seurat_filtered_publication.rds")
+```
+
