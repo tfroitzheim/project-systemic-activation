@@ -264,7 +264,6 @@ Figure 6, panel G
 ```{r}
 seurat_obj_li_dataset_v2 <- readRDS("../output/seurat/seurat_obj_li_dataset_v2.rds")
 
-
 # ----- subset out 0 dpa -----
 obj_no0dpa <- subset(seurat_obj_li_dataset_v2, subset = orig.ident != "0dpa")
 Idents(obj_no0dpa) <- "cluster_annotation"
