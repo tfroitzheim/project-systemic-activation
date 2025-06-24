@@ -38,6 +38,21 @@ To reproduce the analysis end-to-end, run the scripts in `./scripts/` in the fol
 
 All analyses were conducted using the [Harvard FASRC Cluster](https://www.rc.fas.harvard.edu/) in 2025.
 
+Software versions:
+
+- Python v3.9.21
+
+- kb-python v0.29.1
+
+- kallisto v0.51.1 — used for reference index construction and pseudoalignment
+
+- bustools v0.44.1 — used for quantification
+
+- R v4.4.1
+
+- Seurat v5.0.1 — used for downstream single-cell analysis and visualization
+
+
 ---
 
 ## Data Availability

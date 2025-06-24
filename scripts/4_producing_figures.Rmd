@@ -57,16 +57,16 @@ head(seurat_filtered@meta.data[c("seurat_clusters", "cell_type")])
 table(seurat_filtered$cell_type)
 
 
-DimPlot(seurat_filtered,
-        reduction = "umap",
-        group.by  = "cell_type",
-        label     = TRUE,
-        repel     = TRUE) +
-  ggtitle("UMAP: Cell-type annotations")
+p1 <- DimPlot(seurat_filtered,
+              reduction = "umap",
+              group.by  = "cell_type",
+              label     = TRUE,
+              repel     = TRUE) +
+       ggtitle("UMAP: Cell-type annotations")
 
 
 # Save as PDF at high resolution (vector)
-#ggsave(filename = file.path(out.dir, "UMAP_seurat_annotations.pdf"), plot     = p1, device   = cairo_pdf,  width    = 12, height   = 8)
+#ggsave(filename = file.path(out.dir, "UMAP_seurat_annotations_celltype.pdf"), plot     = p1, device   = cairo_pdf,  width    = 12, height   = 8)
 ```
 
 
@@ -83,7 +83,7 @@ p2 <- DimPlot(
 
 print(p2)
 
-#ggsave(filename = file.path(out.dir, "UMAP_seurat_annotations.pdf"), plot = last_plot(), device = cairo_pdf, width = 12, height = 8)
+#ggsave(filename = file.path(out.dir, "UMAP_seurat_annotations_group.pdf"), plot = p2, device = cairo_pdf, width = 12, height = 8)
 ```
 
 
@@ -298,13 +298,7 @@ p <- DotPlot(obj_no0dpa, features = genes) +
 
 p
 
-ggsave(
-  filename = file.path(out.dir, "Li_data_Dotplot_sysact.pdf"),
-  plot     = p,
-  width    = 8,   # keep wide enough for labels
-  height   = 6,   # increase height for more y-space
-  dpi      = 300
-)
+#ggsave(filename = file.path(out.dir, "Li_data_Dotplot_sysact.pdf"), plot     = p, width    = 8, height   = 6, dpi      = 300)
 
 ```
 
@@ -368,7 +362,14 @@ p_fib <- p_fib +
                                    vjust = 1))     # tuck nicely under ticks
 
 print(p_fib)
+
+
+#ggsave(filename = file.path(out.dir, "Fibroblast_DotPlot.pdf"), plot     = p_fib, width    = 8, height   = 6, device   = cairo_pdf)
+
+
 ```
+
+
 
 Sigure S3
 ```{r}
@@ -522,6 +523,10 @@ p <- p +
     high = "red4"                 # highest expression
   )
 p
+
+
+#ggsave(filename = file.path(out.dir, "FigureS3_DotPlot_all_celltypes.pdf"), plot     = p, width    = 12, height   = 10, device   = cairo_pdf)
+
 ```
 
 Figure S4A
