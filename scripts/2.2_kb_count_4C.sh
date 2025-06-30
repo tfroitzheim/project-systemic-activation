@@ -1,11 +1,12 @@
 #!/bin/bash
-#SBATCH --job-name=kbcount_4C
+#SBATCH --job-name=2.2_kbcount_4C
 #SBATCH -c 16
 #SBATCH -t 01-00:00
 #SBATCH -p sapphire
 #SBATCH --mem=500G
-#SBATCH --output=kbcount_4C_%j.out
-#SBATCH --error=kbcount_4C_%j.err
+#SBATCH --output=../log/2.2_kbcount_4C_%j.out
+#SBATCH --error=../log/2.2_kbcount_4C_%j.err
+
 
 # Activate your environment
 source activate scanpy_env

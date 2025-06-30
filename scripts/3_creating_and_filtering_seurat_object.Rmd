@@ -11,6 +11,9 @@ library(scDblFinder)
 library(SingleCellExperiment)
 library(harmony)
 library(DropletUtils)
+library(glmGamPoi)
+options(future.globals.maxSize = 10 * 1024^3)
+
 ```
 
 

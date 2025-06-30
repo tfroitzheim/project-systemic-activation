@@ -1,15 +1,15 @@
 #!/bin/bash
-#SBATCH --job-name=kbcount_2C
+#SBATCH --job-name=2.1_kbcount_2C
 #SBATCH -c 16
 #SBATCH -t 01-00:00
 #SBATCH -p sapphire
 #SBATCH --mem=500G
-#SBATCH --output=kbcount_2C_%j.out
-#SBATCH --error=kbcount_2C_%j.err
+#SBATCH --output=../log/2.1_kbcount_2C_%j.out
+#SBATCH --error=../log/2.1_kbcount_2C_%j.err
 
-# Activate your conda environment
+
+# Activate your environment
 source activate scanpy_env
-
 
 # Directory containing the FASTQs
 FASTQ_DIR="../data/2C"

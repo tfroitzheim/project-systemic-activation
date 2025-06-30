@@ -23,6 +23,8 @@ To generate the figures without reprocessing raw data:
 
 To reproduce the analysis end-to-end, run the scripts in `./scripts/` in the following order:
 
+   ** note : prepare scanpy_env using `./bin/scanpy_env.yml` prior to running scripts 1 - 2.2
+
 | Step | Script                                   | Purpose                                                                 |
 |------|------------------------------------------|-------------------------------------------------------------------------|
 | 0    | `0_dataverse_download.sh`                | Downloads raw FASTQ files (`./data/`), reference files (`./ref/`), and Seurat objects (`./output/seurat/`) from Dataverse |
@@ -48,9 +50,7 @@ Software versions:
 
 - bustools v0.44.1 — used for quantification
 
-- R v4.4.1
-
-- Seurat v5.0.1 — used for downstream single-cell analysis and visualization
+- R v4.4.1 - see ./bin/session_info.txt for package list
 
 
 ---

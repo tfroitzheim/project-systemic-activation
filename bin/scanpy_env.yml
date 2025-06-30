@@ -1,0 +1,15 @@
+name: scanpy_env
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9.21
+  - kb-python=0.29.1
+  - kallisto=0.51.1
+  - bustools=0.44.1
+  - scanpy=1.10.*
+  - pysam
+  - pip
+  - pip:
+      - loompy

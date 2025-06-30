@@ -262,6 +262,8 @@ print(p_contra)
 Figure 6, panel G
 
 ```{r}
+
+#Read in seurat object from Li dataset, from the Dataverse download script (./scripts/dataverse_download.sh)
 seurat_obj_li_dataset_v2 <- readRDS("../output/seurat/seurat_obj_li_dataset_v2.rds")
 
 # ----- subset out 0 dpa -----
@@ -610,4 +612,3 @@ print(p)
 #ggsave(filename = file.path(out.dir, "dotplot_ADRB_2C4Cdata_celltypes.pdf"), plot     = p,width    = 12, height   = 12)
 
 ```
-
