@@ -44,7 +44,7 @@ Software versions:
 
 - Python v3.9.21 - see `./bin/scanpy_env.yml` for environment info
 
-- R v4.4.1 - see `./bin/session_info.txt` for package list
+- R v4.3.3 - see `./bin/session_info.txt` for package list
 
 - kb-python v0.29.1
 

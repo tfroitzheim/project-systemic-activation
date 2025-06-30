@@ -7,12 +7,7 @@
 #SBATCH -o ../log/1_index_%j.out
 #SBATCH -e ../log/1_index_%j.err
 
-
-
-
 # This script produces a reference index, a transcript-to-gene table, and a spliced transcript FASTA (All available on the Harvard dataverse)
-# Inputs are a) a GTF file, and b) the reference genome sequence (also, both available on the Harvard dataverse)
-# !! note that the GTF file used here was modified by stripping the gene feature line. 
 
 # Activate environment
 # Note: create "scanpy_env" using ./bin/scanpy_env.yml
@@ -24,6 +19,10 @@ source activate scanpy_env
        #module load autoconf
        #module load cmake
        #kb compile all
+
+
+# Inputs are a) a GTF file, and b) the reference genome sequence (also, both available on the Harvard dataverse)
+# !! note that the GTF file used here was modified by stripping the gene feature line. 
 
 # Run the kb ref command 
 kb ref -i ../output/kb_ref/index.idx -g ../output/kb_ref/t2g.tsv -f1 ../output/kb_ref/cDNA.fa \
