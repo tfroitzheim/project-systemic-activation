@@ -50,7 +50,7 @@ Software versions:
 
 - bustools v0.44.1 — used for quantification
 
-- R v4.4.1 - see ./bin/session_info.txt for package list
+- R v4.4.1 - see `./bin/session_info.txt` for package list
 
 
 ---
