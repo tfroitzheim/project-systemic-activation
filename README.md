@@ -48,9 +48,9 @@ Software versions:
 
 - kb-python v0.29.1
 
-- kallisto v0.51.1 — used for reference index construction and pseudoalignment
+- kallisto v0.51.1 
 
-- bustools v0.44.1 — used for quantification
+- bustools v0.44.1
 
 ---
 
