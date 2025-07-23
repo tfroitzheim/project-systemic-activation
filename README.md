@@ -62,7 +62,7 @@ All raw and processed data — including FASTQ files, references, and Seurat obj
 
 ## Contact & Authorship
 
-This repository is maintained by members of the **Whited Lab** at the **Harvard University Department of Stem Cell and Regenerative Biology**.
+This repository was created in collaboration by the members of the **Whited Lab** and is maintained at the **Harvard University Department of Stem Cell and Regenerative Biology**.
 
 **Creator**  
 - **Name:** Tim Froitzheim  
