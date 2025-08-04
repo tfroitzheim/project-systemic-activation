@@ -2,7 +2,7 @@
 
 This repository contains all scripts and resources used to generate the data and figures for the preprint:
 
-**“Adrenergic signaling coordinates distant and local responses to amputation in axolotl”** *(preprint link TBD)*
+**["Adrenergic signaling coordinates distant and local responses to amputation in axolotl"](https://doi.org/10.1101/2021.12.29.474455)**
 
 ---
 
