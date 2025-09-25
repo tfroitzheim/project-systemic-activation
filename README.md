@@ -13,8 +13,6 @@ To generate the figures without reprocessing raw data:
 
 1. Download the preprocessed Seurat object: [seurat_filtered_publication.rds](https://doi.org/10.7910/DVN/NW0ZN1)
 
-   ** note : currently this doi link does not work, but can be accessed with limited permissions via this link (https://dataverse.harvard.edu/dataset.xhtml?persistentId=doi:10.7910/DVN/NW0ZN1)
-
 2. Run the figure generation script:  `./scripts/4_producing_figures.Rmd`
 
 
